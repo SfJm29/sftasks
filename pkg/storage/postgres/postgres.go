@@ -44,25 +44,104 @@ type Label struct {
 	Name string
 }
 
-func (s *Storage) Tasks(taskID, authorID, labelID int) ([]Task, error) {
+func (s *Storage) Tasks(taskID int) ([]Task, error) {
 	rows, err := s.db.Query(context.Background(), `
-SELECT 
-id,
-opened,
-closed,
-author_id,
-assigned_id,
-title,
-content
-FROM tasks
-WHERE
-($1 = 0 OR id = $1) AND
-($2 = 0 OR author_id = $2) AND
-($3 = 0 OR label_id = $3)
-ORDER BY id;
+	SELECT 
+	id,
+	opened,
+	closed,
+	author_id,
+	assigned_id,
+	title,
+	content
+	FROM tasks
+	WHERE
+	($1 = 0 OR id = $1)
+	ORDER BY id;
 `,
 		taskID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	var tasks []Task
+
+	for rows.Next() {
+		var t Task
+		err = rows.Scan(
+			&t.ID,
+			&t.Opened,
+			&t.Closed,
+			&t.AuthorID,
+			&t.AssignedID,
+			&t.Title,
+			&t.Content,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
+func (s *Storage) TasksByAuthor(authorID int) ([]Task, error) {
+	rows, err := s.db.Query(context.Background(), `
+	SELECT 
+	id,
+	opened,
+	closed,
+	author_id,
+	assigned_id,
+	title,
+	content
+	FROM tasks
+	WHERE
+	author_id = $1
+	ORDER BY id;
+`,
 		authorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	var tasks []Task
+
+	for rows.Next() {
+		var t Task
+		err = rows.Scan(
+			&t.ID,
+			&t.Opened,
+			&t.Closed,
+			&t.AuthorID,
+			&t.AssignedID,
+			&t.Title,
+			&t.Content,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
+func (s *Storage) TasksByLabel(labelID int) ([]Task, error) {
+	rows, err := s.db.Query(context.Background(), `
+	SELECT 
+	tasks.id,
+	opened,
+	closed,
+	author_id,
+	assigned_id,
+	title,
+	content
+	FROM tasks
+	JOIN tasks_labels ON tasks_labels.task_id = tasks.id
+	JOIN labels ON tasks_labels.label_id = labels.id
+	WHERE labels.id = $1
+	ORDER BY id;
+`,
 		labelID,
 	)
 	if err != nil {
@@ -98,5 +177,56 @@ func (s *Storage) NewTask(t Task) (int, error) {
 		t.Title,
 		t.Content,
 	).Scan(&id)
+	return id, err
+}
+
+func (s *Storage) TasksUpdateByID(taskID int, t Task) (int, error) {
+	var id int
+	err := s.db.QueryRow(context.Background(), `
+	UPDATE tasks
+
+	SET 
+	opened = $1,
+	closed = $2,
+	author_id = $3,
+	assigned_id = $4,
+	title = $5,
+	content = $6
+	
+	WHERE id = $7
+
+	RETURNING id;
+`,
+		t.Opened,
+		t.Closed,
+		t.AuthorID,
+		t.AssignedID,
+		t.Title,
+		t.Content,
+		taskID,
+	).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, err
+
+}
+
+func (s *Storage) TaskDelete(taskID int) (int, error) {
+	var id int
+	err := s.db.QueryRow(context.Background(), `
+	DELETE 
+	FROM
+	tasks
+	
+	WHERE id = $1
+
+	RETURNING id;
+`,
+		taskID,
+	).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
 	return id, err
 }

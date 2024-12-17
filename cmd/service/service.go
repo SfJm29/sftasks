@@ -18,24 +18,21 @@ func main() {
 	db, err := postgres.New(connstr)
 	if err != nil {
 		fmt.Println(err)
-		//return nil, err
 	}
 
-	rowstasks, err := db.Tasks(0, 0, 0)
-	fmt.Println(rowstasks)
-	//rows, err := db.Query(context.Background(), `
-	//	SELECT * FROM labels;`)
+	//rowstasks, err := db.TasksByLabel(4) //TasksByAuthor(1) //db.Tasks(0)
+	//fmt.Println(rowstasks)
 
-	//for rowstasks.Next() {
-	//	var st int
-	//	var st2 string
-	//	err = rowstasks.Scan(
-	//		&st,
-	//		&st2,
-	//	)
-
-	//	fmt.Println(st, st2)
-
+	//rowtask, err := db.Tasks(4)
+	//fmt.Println(rowtask[0])
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
 	//}
-	//defer db.Close()
+
+	//rowtask[0].Title = "testupdate"
+
+	//db.TasksUpdateByID(rowtask[0].ID, rowtask[0])
+
+	db.TaskDelete(4)
 }
